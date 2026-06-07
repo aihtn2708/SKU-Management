@@ -188,6 +188,10 @@ elif selected_tab == "import":
                     m_code = get_col(df_mother, ['code', 'id'])
                     m_desc = get_col(df_mother, ['desc', 'name'])
                     
+                    # 🔥 FIX: Standardize Mother SKU column names to the internal UI schema
+                    df_mother = df_mother.rename(columns={m_code: 'code', m_desc: 'desc'})
+                    m_code, m_desc = 'code', 'desc' # Update pointers for the rest of the script
+                    
                     h_c_code = get_col(df_hist, ['child', 'code'])
                     h_c_desc = get_col(df_hist, ['child', 'desc'])
                     h_m_code = get_col(df_hist, ['mother', 'target'])
