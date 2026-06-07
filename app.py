@@ -82,6 +82,12 @@ if mother_file and hist_file and child_file:
             c_code = get_col(df_child, ['code', 'id'])
             c_desc = get_col(df_child, ['desc', 'name'])
 
+            # 🔥 FIX: Force all SKU codes to string type to prevent merge type mismatch errors
+            df_mother[m_code] = df_mother[m_code].astype(str).str.strip()
+            df_hist[h_c_code] = df_hist[h_c_code].astype(str).str.strip()
+            df_hist[h_m_code] = df_hist[h_m_code].astype(str).str.strip()
+            df_child[c_code] = df_child[c_code].astype(str).str.strip()
+
             # --- Step B: Build Exact History Dictionary ---
             # Creates a fast lookup mapping known child codes to their mother codes
             history_dict = dict(zip(df_hist[h_c_code].astype(str), df_hist[h_m_code].astype(str)))
