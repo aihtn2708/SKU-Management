@@ -1,11 +1,6 @@
-# Web Interface and Application State
-streamlit>=1.32.0
-
-# Data Manipulation & Local SQL Processing
+streamlit>=1.35.0
 pandas>=2.2.0
 openpyxl>=3.1.2
-
-# Open-Source Machine Learning & Semantic Search
 sentence-transformers>=2.5.1
 torch>=2.2.0
 rapidfuzz>=3.6.2
