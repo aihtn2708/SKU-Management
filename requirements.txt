@@ -1,13 +1,11 @@
 # Web Interface and Application State
-streamlit==1.32.0
+streamlit>=1.32.0
 
 # Data Manipulation & Local SQL Processing
-pandas==2.2.1
-openpyxl==3.1.2
+pandas>=2.2.0
+openpyxl>=3.1.2
 
 # Open-Source Machine Learning & Semantic Search
-sentence-transformers==2.5.1
-torch==2.2.1 --find-links https://download.pytorch.org/whl/cpu
-
-# Engine Accelerators (Optional but improves execution speed)
-rapidfuzz==3.6.2
+sentence-transformers>=2.5.1
+torch>=2.2.0
+rapidfuzz>=3.6.2
