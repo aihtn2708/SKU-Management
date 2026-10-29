@@ -117,7 +117,7 @@ def log_event(action, detail, method, note=""):
 st.sidebar.markdown("""
     <div style='padding: 10px 0px;'>
         <h2 style='color: #15247A; margin-bottom: 0px; font-weight:900;'>SKU Management</h2>
-        <small style='color: #00AEEF; font-weight: 800; text-transform: uppercase;'>SKU Management System</small>
+        <small style='color: #00AEEF; font-weight: 800; text-transform: uppercase;'>Mapping System</small>
     </div>
 """, unsafe_allow_html=True)
 
