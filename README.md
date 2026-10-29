@@ -1,6 +1,6 @@
 # SKU-Management
 
-A mock-up of the **Perfetti Van Melle SKU Mapping Management System**: a Streamlit app that maps each market's local product codes (*child SKUs*) to one canonical global product (*mother SKU*), so sales reported in Vietnam, the Philippines or Thailand roll up to the same line in the consolidated P&L.
+A mock-up of an **SKU Mapping Management System**: a Streamlit app that maps each market's local product codes (*child SKUs*) to one canonical global product (*mother SKU*), so sales reported in Vietnam, the Philippines or Thailand roll up to the same line in the consolidated P&L.
 
 **Interactive explainer:** [`docs/index.html`](docs/index.html) — a browser replica of every Streamlit view with sample data, plus a walkthrough of the matching engine. Open the file locally, or enable GitHub Pages (Settings → Pages → Deploy from branch → `main` / `docs`) to serve it at `https://aihtn2708.github.io/SKU-Management/`.
 
@@ -52,7 +52,7 @@ uploads ─► normalise ─► Tier 1: exact history ────────�
 | 📋 **Unmapped Queue** | Pick an unmapped child, assign a mother, and give a required audit rationale (`manual`). |
 | ⚠️ **Conflict Detection** | In-memory SQLite query for child codes linked to more than one mother. |
 | 🗄️ **Master Registry** | Editable mother catalogue (`st.data_editor`, dynamic rows). |
-| 📜 **Audit Ledger** | Time-stamped log of every action, plus an Excel export (`PVM_Canonical_Export.xlsx`) joining confirmed children to their mothers. |
+| 📜 **Audit Ledger** | Time-stamped log of every action, plus an Excel export joining confirmed children to their mothers. |
 
 ## Running the app
 

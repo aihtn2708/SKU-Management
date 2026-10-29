@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PVM SKU Management System</title>
+<title>SKU Management System</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Interactive walkthrough of the Perfetti Van Melle SKU mapping system: how country child SKUs are matched to canonical mother SKUs.">
+<meta name="description" content="Interactive walkthrough of an SKU mapping system: how country child SKUs are matched to canonical mother SKUs.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: explainer band → annotated replica of the Streamlit app (sidebar + view) → run instructions.
-   Palette and type are taken from app.py's own styling (PVM navy, cyan, Nunito). */
+   Palette and type are taken from app.py's own styling (navy, cyan, Nunito). */
 :root {
-  --brand: #15247A;      /* PVM navy: headers, primary buttons */
-  --accent: #00AEEF;     /* PVM cyan: links, focus, "awaiting review" */
+  --brand: #15247A;      /* navy: headers, primary buttons */
+  --accent: #00AEEF;     /* cyan: links, focus, "awaiting review" */
   --ok: #1E9E6A;         /* confirmed */
   --warn: #F5A623;       /* unmapped */
   --bad: #D2433F;        /* conflicts */
@@ -229,7 +229,7 @@ footer { padding-block: 48px; color: var(--muted); font-size: 13px; }
 
 <header class="top">
   <div class="wrap">
-    <div class="eyebrow">Perfetti Van Melle · Regional Finance</div>
+    <div class="eyebrow">Regional Finance · Mapping Tool</div>
     <h1>SKU Management System</h1>
     <p>Every market reports sales against its own local product codes. This system maps each of those <em>child</em> SKUs to one canonical <em>mother</em> SKU, so a strawberry lollipop sold in Hanoi and one sold in Manila roll up to the same line in the consolidated P&amp;L.</p>
     <div class="top-links">
@@ -349,10 +349,10 @@ footer { padding-block: 48px; color: var(--muted); font-size: 13px; }
     <p>A working replica of <code>app.py</code> with sample Vietnam, Philippines and Thailand data already run through the pipeline. Confirm suggestions, fix the wrong one, map the unmapped items and watch the audit ledger fill. Dashed notes explain the code behind each view.</p>
   </div>
   <div class="window">
-    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">localhost:8501 · Perfetti Van Melle | SKU Management System</div></div>
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">localhost:8501 · SKU Management System</div></div>
     <div class="app">
       <aside class="side">
-        <div class="brand"><h3>Perfetti Van Melle</h3><small>SKU Management System</small></div>
+        <div class="brand"><h3>SKU Management</h3><small>Mapping System</small></div>
         <div>
           <div class="nav-label">Navigation Menu</div>
           <nav class="nav" id="nav"></nav>
@@ -381,7 +381,7 @@ streamlit run app.py</pre>
 </section>
 </main>
 
-<footer class="wrap">SKU Management System · mock-up of <code>app.py</code> · sample data is illustrative, not real PVM figures.</footer>
+<footer class="wrap">SKU Management System · mock-up of <code>app.py</code> · sample data is illustrative, not real company figures.</footer>
 
 <div class="toast" id="toast" hidden></div>
 
@@ -415,7 +415,7 @@ streamlit run app.py</pre>
   /* Sample uploads. History columns are named so get_col() resolves them correctly (see README, known issues). */
   function sampleFiles() {
     return {
-      m: { name: "PVM_Mother_Registry.xlsx", rows: E.SAMPLE.mothers.map(m => ({ "Mother Code": m.code, "Description": m.desc, brand: m.brand, packType: m.packType, weight: m.weight })) },
+      m: { name: "Mother_Registry.xlsx", rows: E.SAMPLE.mothers.map(m => ({ "Mother Code": m.code, "Description": m.desc, brand: m.brand, packType: m.packType, weight: m.weight })) },
       h: { name: "Mapping_History_FY26.xlsx", rows: E.SAMPLE.history.map(h => ({ "Code": h.child_code, "Description": h.child_desc, "Mother Target": h.mother_code })) },
       c: { name: "PnL_Extract_Oct26.csv", rows: E.SAMPLE.children.map(c => ({ "SKU Code": c.code, "Description": c.desc, "Market": c.country })) }
     };
@@ -593,7 +593,7 @@ GROUP BY code HAVING links > 1</pre>
       <div class="panel"><h4>Canonical mapping export · ${exp.length} confirmed links</h4>
         ${table(exp.slice(0, 6), ["country", "code_child", "desc_child", "code_canonical", "desc_canonical", "method", "confidence"], { fmt: { confidence: v => (v * 100).toFixed(0) + "%" } })}
         ${exp.length > 6 ? `<span class="muted" style="font-size:13px">+ ${exp.length - 6} more rows in the export</span>` : ""}
-        <div class="row"><button class="btn primary" id="exp-copy" ${exp.length ? "" : "disabled"}>Copy export as CSV</button><span class="muted" style="font-size:13px">The real app downloads <span class="mono">PVM_Canonical_Export.xlsx</span>, sheet <span class="mono">PVM_Canonical_Mappings</span>.</span></div>
+        <div class="row"><button class="btn primary" id="exp-copy" ${exp.length ? "" : "disabled"}>Copy export as CSV</button><span class="muted" style="font-size:13px">The real app downloads the same table as an Excel file.</span></div>
       </div>
       ${note("Every pipeline run, manual binding, override and confirmation is logged with time, analyst and method. The export joins confirmed and auto-confirmed children to their mothers, with columns suffixed <code>_child</code> and <code>_canonical</code>.")}`;
   };
