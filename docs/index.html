@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SKU Management System</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Interactive walkthrough of the SKU Management SKU mapping system: how country child SKUs are matched to canonical mother SKUs.">
+<meta name="description" content="Interactive walkthrough of an SKU mapping system: how country child SKUs are matched to canonical mother SKUs.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -229,7 +229,7 @@ footer { padding-block: 48px; color: var(--muted); font-size: 13px; }
 
 <header class="top">
   <div class="wrap">
-    <div class="eyebrow">Regional Finance</div>
+    <div class="eyebrow">Regional Finance · Mapping Tool</div>
     <h1>SKU Management System</h1>
     <p>Every market reports sales against its own local product codes. This system maps each of those <em>child</em> SKUs to one canonical <em>mother</em> SKU, so a strawberry lollipop sold in Hanoi and one sold in Manila roll up to the same line in the consolidated P&amp;L.</p>
     <div class="top-links">
@@ -352,7 +352,7 @@ footer { padding-block: 48px; color: var(--muted); font-size: 13px; }
     <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">localhost:8501 · SKU Management System</div></div>
     <div class="app">
       <aside class="side">
-        <div class="brand"><h3>SKU Management</h3><small>SKU Management System</small></div>
+        <div class="brand"><h3>SKU Management</h3><small>Mapping System</small></div>
         <div>
           <div class="nav-label">Navigation Menu</div>
           <nav class="nav" id="nav"></nav>
@@ -381,7 +381,7 @@ streamlit run app.py</pre>
 </section>
 </main>
 
-<footer class="wrap">SKU Management System · mock-up of <code>app.py</code> · sample data is illustrative, not real figures.</footer>
+<footer class="wrap">SKU Management System · mock-up of <code>app.py</code> · sample data is illustrative, not real company figures.</footer>
 
 <div class="toast" id="toast" hidden></div>
 
@@ -593,7 +593,7 @@ GROUP BY code HAVING links > 1</pre>
       <div class="panel"><h4>Canonical mapping export · ${exp.length} confirmed links</h4>
         ${table(exp.slice(0, 6), ["country", "code_child", "desc_child", "code_canonical", "desc_canonical", "method", "confidence"], { fmt: { confidence: v => (v * 100).toFixed(0) + "%" } })}
         ${exp.length > 6 ? `<span class="muted" style="font-size:13px">+ ${exp.length - 6} more rows in the export</span>` : ""}
-        <div class="row"><button class="btn primary" id="exp-copy" ${exp.length ? "" : "disabled"}>Copy export as CSV</button><span class="muted" style="font-size:13px">The real app downloads <span class="mono">Canonical_Export.xlsx</span>, sheet <span class="mono">Canonical_Mappings</span>.</span></div>
+        <div class="row"><button class="btn primary" id="exp-copy" ${exp.length ? "" : "disabled"}>Copy export as CSV</button><span class="muted" style="font-size:13px">The real app downloads the same table as an Excel file.</span></div>
       </div>
       ${note("Every pipeline run, manual binding, override and confirmation is logged with time, analyst and method. The export joins confirmed and auto-confirmed children to their mothers, with columns suffixed <code>_child</code> and <code>_canonical</code>.")}`;
   };
