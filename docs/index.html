@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PVM SKU Management System</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Interactive walkthrough of the Perfetti Van Melle SKU mapping system: how country child SKUs are matched to canonical mother SKUs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: explainer band → annotated replica of the Streamlit app (sidebar + view) → run instructions.
+   Palette and type are taken from app.py's own styling (PVM navy, cyan, Nunito). */
+:root {
+  --brand: #15247A;      /* PVM navy: headers, primary buttons */
+  --accent: #00AEEF;     /* PVM cyan: links, focus, "awaiting review" */
+  --ok: #1E9E6A;         /* confirmed */
+  --warn: #F5A623;       /* unmapped */
+  --bad: #D2433F;        /* conflicts */
+  --bg: #F6F8FC;
+  --surface: #FFFFFF;
+  --side: #EEF2F9;
+  --line: #E3E8F2;
+  --ink: #1C2433;
+  --muted: #5B6680;
+  --tint: #E6F7FE;
+  --on-brand: #FFFFFF;
+  --brand-ink: #15247A;
+  --font: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --brand: #3B4FC4; --accent: #3CC4F5; --ok: #3CC48C; --warn: #F7B84A; --bad: #EF6A66;
+  --bg: #0D1222; --surface: #151C33; --side: #11182C; --line: #26304D; --ink: #E5E9F3;
+  --muted: #9AA5BF; --tint: #10304A; --on-brand: #FFFFFF; --brand-ink: #A9B6FF; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --brand: #3B4FC4; --accent: #3CC4F5; --ok: #3CC48C; --warn: #F7B84A; --bad: #EF6A66;
+  --bg: #0D1222; --surface: #151C33; --side: #11182C; --line: #26304D; --ink: #E5E9F3;
+  --muted: #9AA5BF; --tint: #10304A; --on-brand: #FFFFFF; --brand-ink: #A9B6FF; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font); }
+h1, h2, h3, h4 { text-wrap: balance; line-height: 1.2; margin: 0; }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+
+/* ---------- Header ---------- */
+.top { background: var(--brand); color: var(--on-brand); }
+.top .wrap { padding-block: 40px 44px; display: grid; gap: 14px; }
+.top h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 900; letter-spacing: -.02em; }
+.top p { max-width: 64ch; margin: 0; opacity: .88; font-size: 17px; }
+.top .eyebrow { color: #7FDBFF; }
+.top-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.chip-link { color: var(--on-brand); text-decoration: none; border: 1px solid rgba(255,255,255,.35); border-radius: 20px; padding: 6px 14px; font-weight: 700; font-size: 14px; }
+.chip-link:hover { background: rgba(255,255,255,.12); }
+
+section { padding-block: 48px 8px; }
+.sec-head { display: grid; gap: 8px; margin-bottom: 22px; max-width: 70ch; }
+.sec-head h2 { font-size: 28px; font-weight: 900; color: var(--brand-ink); letter-spacing: -.01em; }
+.sec-head p { margin: 0; color: var(--muted); }
+
+/* ---------- Concepts ---------- */
+.terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.term { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 6px; align-content: start; }
+.term h3 { font-size: 16px; font-weight: 800; }
+.term p { margin: 0; color: var(--muted); font-size: 14px; }
+.term .ex { font-family: var(--mono); font-size: 12.5px; color: var(--ink); background: var(--bg); border-radius: 6px; padding: 6px 8px; }
+
+/* ---------- Flow diagram ---------- */
+.flow { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; overflow-x: auto; }
+.flow svg { display: block; min-width: 860px; width: 100%; height: auto; }
+.flow text { font-family: var(--font); fill: var(--ink); }
+.flow .sub { fill: var(--muted); font-size: 11.5px; }
+.flow .box { fill: var(--bg); stroke: var(--line); }
+.flow .boxb { fill: var(--tint); stroke: var(--accent); }
+.flow .edge { stroke: var(--muted); fill: none; stroke-width: 1.4; }
+.flow .arrow { fill: var(--muted); }
+.tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+.tier { border-top: 3px solid var(--line); padding-top: 10px; display: grid; gap: 4px; }
+.tier h4 { font-size: 15px; font-weight: 800; }
+.tier p { margin: 0; font-size: 14px; color: var(--muted); }
+.tier.t1 { border-color: var(--ok); } .tier.t2 { border-color: var(--accent); } .tier.t3 { border-color: var(--brand); }
+
+/* ---------- Normaliser playground ---------- */
+.play { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; }
+.play label { font-weight: 800; font-size: 13px; display: block; margin-bottom: 6px; }
+.field, select.field { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; }
+.out-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); align-items: baseline; }
+.out-row:last-child { border-bottom: 0; }
+.out-row span:first-child { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.out-row .mono { overflow-wrap: anywhere; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.preset { font: 500 12px var(--mono); border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 14px; padding: 3px 10px; cursor: pointer; }
+.preset:hover { border-color: var(--accent); }
+
+/* ---------- App replica ---------- */
+.window { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); box-shadow: 0 18px 40px -24px rgba(21,36,122,.35); }
+.chrome { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--side); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.dots { display: flex; gap: 6px; } .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+.url { font-family: var(--mono); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.app { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 640px; }
+.side { background: var(--side); border-right: 1px solid var(--line); padding: 18px 14px; display: flex; flex-direction: column; gap: 16px; }
+.side .brand h3 { color: var(--brand-ink); font-weight: 900; font-size: 19px; }
+.side .brand small { color: var(--accent); font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: .04em; }
+.nav-label { font-size: 13px; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+.nav { display: grid; gap: 2px; }
+.nav button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+.nav button .radio { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--muted); flex: none; }
+.nav button[aria-current="true"] { background: var(--surface); }
+.nav button[aria-current="true"] .radio { border-color: var(--bad); border-width: 4px; }
+.nav button:hover { background: var(--surface); }
+.nav button:focus-visible { outline: 2px solid var(--accent); }
+.nav .count { margin-left: auto; font: 500 11px var(--mono); color: var(--muted); }
+.analyst { margin-top: auto; background: var(--tint); border-radius: 8px; padding: 12px; }
+.analyst span { font-size: 11px; color: var(--brand-ink); font-weight: 800; text-transform: uppercase; }
+.analyst strong { display: block; }
+.main { padding: 26px 28px 34px; min-width: 0; display: grid; gap: 18px; align-content: start; }
+.main h2 { font-size: 30px; font-weight: 900; color: var(--brand-ink); letter-spacing: -.02em; }
+.lede { margin: -8px 0 0; color: var(--muted); }
+
+.note { border: 1px dashed var(--accent); background: var(--tint); border-radius: 8px; padding: 12px 14px; font-size: 13.5px; display: grid; gap: 4px; }
+.note b { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-ink); }
+.note p { margin: 0; }
+
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.metric { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.metric h5 { margin: 0 0 4px; font-size: 13px; font-weight: 800; }
+.metric .n { font-size: 34px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.c-ok { color: var(--ok); } .c-acc { color: var(--accent); } .c-warn { color: var(--warn); } .c-bad { color: var(--bad); }
+
+.bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line); }
+.bar i { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--c); margin-right: 6px; vertical-align: -1px; }
+
+.panel { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel h4 { font-size: 15px; font-weight: 800; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 800; color: var(--muted); background: var(--bg); font-size: 12px; }
+tr:last-child td { border-bottom: 0; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td[contenteditable="true"] { background: var(--surface); outline: none; cursor: text; }
+td[contenteditable="true"]:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.pill { display: inline-block; font-size: 11.5px; font-weight: 800; border-radius: 20px; padding: 1px 9px; border: 1px solid currentColor; }
+.s-auto_confirmed, .s-confirmed { color: var(--ok); }
+.s-suggested { color: var(--accent); }
+.s-unmapped { color: var(--warn); }
+
+.btn { font: 700 14px var(--font); border-radius: 20px; padding: 7px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--bad); color: var(--bad); }
+.btn.primary { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); color: #fff; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.sm { font-size: 12.5px; padding: 4px 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+.upload { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.upload b { font-size: 14px; }
+.drop { background: var(--bg); border-radius: 8px; padding: 12px; display: grid; gap: 4px; font-size: 13px; }
+.drop .fname { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.drop label { color: var(--accent); font-weight: 700; cursor: pointer; font-size: 12.5px; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.steps { display: grid; gap: 6px; font-size: 13.5px; }
+.steps div { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+.steps div.done { color: var(--ink); }
+.steps div::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+.steps div.done::before { background: var(--ok); border-color: var(--ok); }
+.alert { border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+.alert.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.alert.info { background: var(--tint); }
+.alert.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); }
+.alert.err { background: color-mix(in srgb, var(--bad) 15%, transparent); }
+
+.filters { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 12px; }
+.exp { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.exp summary { cursor: pointer; padding: 10px 14px; font-size: 14px; display: flex; gap: 10px; align-items: center; list-style: none; }
+.exp summary::-webkit-details-marker { display: none; }
+.exp summary::before { content: "›"; font-weight: 900; color: var(--muted); transition: transform .15s; }
+.exp[open] summary::before { transform: rotate(90deg); }
+.exp summary .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.exp .body { padding: 4px 14px 14px; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+.json { font-family: var(--mono); font-size: 12.5px; background: var(--bg); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; margin: 0; }
+.conf { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.conf .meter { width: 90px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.conf .meter i { display: block; height: 100%; }
+.opts { display: grid; gap: 6px; }
+.empty { text-align: center; padding: 30px; color: var(--muted); }
+
+.queue { display: grid; gap: 4px; }
+.queue label { display: flex; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 13.5px; align-items: baseline; }
+.queue label:hover { background: var(--bg); }
+.queue input { accent-color: var(--bad); }
+.bigcode { font: 500 26px var(--mono); }
+pre.sql { font-family: var(--mono); font-size: 12.5px; background: var(--bg); border-radius: 8px; padding: 12px; margin: 0; overflow-x: auto; }
+
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; z-index: 20; }
+
+/* ---------- Run it ---------- */
+.run { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+pre.cmd { font-family: var(--mono); font-size: 13px; background: var(--side); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow-x: auto; margin: 0; }
+footer { padding-block: 48px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { border-right: 0; border-bottom: 1px solid var(--line); }
+  .nav { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .analyst { display: none; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid3, .grid2, .play, .run, .exp .body, .filters { grid-template-columns: minmax(0, 1fr); }
+  .main { padding: 20px 16px 28px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="eyebrow">Perfetti Van Melle · Regional Finance</div>
+    <h1>SKU Management System</h1>
+    <p>Every market reports sales against its own local product codes. This system maps each of those <em>child</em> SKUs to one canonical <em>mother</em> SKU, so a strawberry lollipop sold in Hanoi and one sold in Manila roll up to the same line in the consolidated P&amp;L.</p>
+    <div class="top-links">
+      <a class="chip-link" href="#how">How matching works</a>
+      <a class="chip-link" href="#mockup">Try the app mock-up</a>
+      <a class="chip-link" href="#run">Run it locally</a>
+      <a class="chip-link" href="https://github.com/aihtn2708/SKU-Management">GitHub repo</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<section class="wrap" id="concepts">
+  <div class="sec-head">
+    <div class="eyebrow">The problem</div>
+    <h2>Three datasets, one canonical catalogue</h2>
+    <p>The app asks for three files. Column names are detected by keyword, so most exports work as they are.</p>
+  </div>
+  <div class="terms">
+    <div class="term">
+      <h3>1 · Master Mother SKUs</h3>
+      <p>The canonical registry. One row per global product, with a code and description; brand, pack type and weight are optional.</p>
+      <div class="ex">M1001 · Alpenliebe Strawberry Lollipop 24 Pouch</div>
+    </div>
+    <div class="term">
+      <h3>2 · Historical Mappings</h3>
+      <p>Child → mother links already approved in past cycles. Exact codes are carried forward; their descriptions also act as a synonym list.</p>
+      <div class="ex">VN-24001 · AL Straw LLP 24px → M1001</div>
+    </div>
+    <div class="term">
+      <h3>3 · New Unmapped SKUs</h3>
+      <p>The raw P&amp;L extraction from each market: local code, local description, and optionally a country or market column.</p>
+      <div class="ex">VN-24015 · AL Strawberry Lollipop 24 Pouch new</div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="how">
+  <div class="sec-head">
+    <div class="eyebrow">The engine</div>
+    <h2>History first, then semantic matching</h2>
+    <p>Each new child SKU passes through up to three tiers. The confidence score decides whether a person needs to look at it.</p>
+  </div>
+  <div class="flow" role="img" aria-label="Pipeline: uploads are normalised, then matched by exact history, fuzzy via history or fuzzy direct, and routed by score to auto-confirmed, suggested or unmapped.">
+    <svg viewBox="0 0 980 300" xmlns="http://www.w3.org/2000/svg">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+      <rect class="box" x="10" y="40" width="150" height="56" rx="8"/><text x="22" y="64" font-weight="800" font-size="13">Mother SKUs</text><text class="sub" x="22" y="82">canonical registry</text>
+      <rect class="box" x="10" y="122" width="150" height="56" rx="8"/><text x="22" y="146" font-weight="800" font-size="13">History</text><text class="sub" x="22" y="164">past child → mother</text>
+      <rect class="box" x="10" y="204" width="150" height="56" rx="8"/><text x="22" y="228" font-weight="800" font-size="13">New child SKUs</text><text class="sub" x="22" y="246">raw P&amp;L extract</text>
+      <path class="edge" d="M160 68 C190 68 190 150 212 150" marker-end="url(#ah)"/>
+      <path class="edge" d="M160 150 L212 150" marker-end="url(#ah)"/>
+      <path class="edge" d="M160 232 C190 232 190 150 212 150" marker-end="url(#ah)"/>
+      <rect class="boxb" x="214" y="112" width="160" height="76" rx="8"/><text x="226" y="138" font-weight="800" font-size="13">Normalise</text><text class="sub" x="226" y="156">expand abbreviations,</text><text class="sub" x="226" y="172">strip sizes &amp; punctuation</text>
+      <path class="edge" d="M374 150 L414 150" marker-end="url(#ah)"/>
+      <rect class="box" x="416" y="20" width="200" height="64" rx="8" style="stroke:var(--ok)"/><text x="428" y="46" font-weight="800" font-size="13">Tier 1 · Exact history</text><text class="sub" x="428" y="64">child code seen before</text>
+      <rect class="box" x="416" y="118" width="200" height="64" rx="8" style="stroke:var(--accent)"/><text x="428" y="144" font-weight="800" font-size="13">Tier 2 · Fuzzy via history</text><text class="sub" x="428" y="162">closest past description</text>
+      <rect class="box" x="416" y="216" width="200" height="64" rx="8" style="stroke:var(--brand)"/><text x="428" y="242" font-weight="800" font-size="13">Tier 3 · Fuzzy direct</text><text class="sub" x="428" y="260">closest mother description</text>
+      <path class="edge" d="M414 150 C400 150 400 52 414 52"/>
+      <path class="edge" d="M414 150 C400 150 400 248 414 248"/>
+      <path class="edge" d="M616 52 L686 52" marker-end="url(#ah)"/>
+      <path class="edge" d="M616 150 L686 150" marker-end="url(#ah)"/>
+      <path class="edge" d="M616 248 L686 150" marker-end="url(#ah)"/>
+      <rect class="box" x="688" y="24" width="122" height="56" rx="8"/><text x="700" y="48" font-weight="800" font-size="13">score = 1.0</text><text class="sub" x="700" y="66">certain</text>
+      <rect class="box" x="688" y="112" width="122" height="76" rx="8"/><text x="700" y="136" font-weight="800" font-size="13">Route by score</text><text class="sub" x="700" y="154">≥ 0.85 · 0.45–0.85</text><text class="sub" x="700" y="170">≤ 0.45</text>
+      <path class="edge" d="M810 52 L848 52" marker-end="url(#ah)"/>
+      <path class="edge" d="M810 140 C830 140 830 52 848 52" marker-end="url(#ah)"/>
+      <path class="edge" d="M810 150 L848 150" marker-end="url(#ah)"/>
+      <path class="edge" d="M810 162 C830 162 830 248 848 248" marker-end="url(#ah)"/>
+      <rect x="850" y="30" width="122" height="44" rx="22" fill="var(--surface)" stroke="var(--ok)"/><text x="866" y="57" font-weight="800" font-size="12.5" style="fill:var(--ok)">auto_confirmed</text>
+      <rect x="850" y="128" width="122" height="44" rx="22" fill="var(--surface)" stroke="var(--accent)"/><text x="878" y="155" font-weight="800" font-size="12.5" style="fill:var(--accent)">suggested</text>
+      <rect x="850" y="226" width="122" height="44" rx="22" fill="var(--surface)" stroke="var(--warn)"/><text x="879" y="253" font-weight="800" font-size="12.5" style="fill:var(--warn)">unmapped</text>
+    </svg>
+  </div>
+  <div class="tiers">
+    <div class="tier t1"><h4>Tier 1 · Exact history</h4><p>If the child code already appears in the history file, its old mother is reused with confidence 1.0. No model is involved.</p></div>
+    <div class="tier t2"><h4>Tier 2 · Fuzzy via history</h4><p>The description is embedded with <code>all-MiniLM-L6-v2</code> and compared to every past child description. If the best past synonym beats the best mother, its mother is proposed.</p></div>
+    <div class="tier t3"><h4>Tier 3 · Fuzzy direct</h4><p>Otherwise the closest canonical mother description wins. Scores above 0.85 are auto-confirmed, 0.45–0.85 wait in the Workbench, the rest go to the Unmapped queue.</p></div>
+  </div>
+</section>
+
+<section class="wrap" id="normalise">
+  <div class="sec-head">
+    <div class="eyebrow">Text normalisation</div>
+    <h2>What the model actually compares</h2>
+    <p>Local descriptions are full of shorthand. Before embedding, <code>advanced_normalize()</code> expands brand abbreviations, applies the country dictionary, and strips pack sizes so that “24px” and “45 bag” don't dominate the match. <code>parse_specs()</code> keeps those sizes separately for the reviewer.</p>
+  </div>
+  <div class="play">
+    <div>
+      <label for="np-in">Child SKU description</label>
+      <input id="np-in" class="field mono" value="AL Straw LLP 24px">
+      <div style="height:12px"></div>
+      <label for="np-country">Country dictionary</label>
+      <select id="np-country" class="field">
+        <option value="General">General (global abbreviations only)</option>
+        <option value="Vietnam" selected>Vietnam</option>
+      </select>
+      <div class="presets" aria-label="Examples">
+        <button class="preset" type="button">AL pfruit hard candy 120g</button>
+        <button class="preset" type="button">CC mini llp 50pcs disp</button>
+        <button class="preset" type="button">AL 2chew chiaki 45 bag</button>
+        <button class="preset" type="button">MT Mint roll 37.5g (14pcs)</button>
+      </div>
+    </div>
+    <div>
+      <div class="out-row"><span>Normalised</span><span class="mono" id="np-norm"></span></div>
+      <div class="out-row"><span>Parsed specs</span><span class="mono" id="np-specs"></span></div>
+      <div class="out-row"><span>Best mother</span><span id="np-best"></span></div>
+      <div class="out-row"><span>Routing</span><span id="np-route"></span></div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="mockup">
+  <div class="sec-head">
+    <div class="eyebrow">Interactive mock-up</div>
+    <h2>The Streamlit app, view by view</h2>
+    <p>A working replica of <code>app.py</code> with sample Vietnam, Philippines and Thailand data already run through the pipeline. Confirm suggestions, fix the wrong one, map the unmapped items and watch the audit ledger fill. Dashed notes explain the code behind each view.</p>
+  </div>
+  <div class="window">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">localhost:8501 · Perfetti Van Melle | SKU Management System</div></div>
+    <div class="app">
+      <aside class="side">
+        <div class="brand"><h3>Perfetti Van Melle</h3><small>SKU Management System</small></div>
+        <div>
+          <div class="nav-label">Navigation Menu</div>
+          <nav class="nav" id="nav"></nav>
+        </div>
+        <div class="analyst"><span>Session Analyst</span><strong>regional.analyst</strong></div>
+      </aside>
+      <div class="main" id="view" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="run">
+  <div class="sec-head">
+    <div class="eyebrow">Run it</div>
+    <h2>Start the real app</h2>
+    <p>The repo opens in GitHub Codespaces with the dev container, which installs requirements and starts Streamlit on port 8501. Locally it is two commands.</p>
+  </div>
+  <div class="run">
+    <pre class="cmd">pip install -r requirements.txt
+streamlit run app.py</pre>
+    <div class="panel">
+      <h4>What differs in this mock-up</h4>
+      <p class="muted" style="margin:0;font-size:14px">The browser cannot load the MiniLM model, so similarity here is a character-trigram and token-overlap score that uses the same 0.45 and 0.85 thresholds. Normalisation, spec parsing, tier order, routing, conflict detection and the export join are ported directly from <code>app.py</code>. Nothing leaves your browser.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="wrap">SKU Management System · mock-up of <code>app.py</code> · sample data is illustrative, not real PVM figures.</footer>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  const E = window.SKUEngine;
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const now = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+  const USER = "regional.analyst";
+
+  /* ---------------- Normaliser playground ---------------- */
+  function playground() {
+    const v = $("#np-in").value, country = $("#np-country").value;
+    const norm = E.normalize(v, country);
+    $("#np-norm").textContent = norm || "—";
+    const sp = E.parseSpecs(v);
+    $("#np-specs").textContent = Object.keys(sp).length ? JSON.stringify(sp) : "{}";
+    let best = null, score = -1;
+    for (const m of E.SAMPLE.mothers) { const s = E.similarity(norm, E.normalize(m.desc)); if (s > score) { score = s; best = m; } }
+    $("#np-best").innerHTML = best && score > 0 ? `${esc(best.desc)} <span class="mono muted">${best.code}</span>` : "—";
+    const st = score >= E.AUTO_CONFIRM ? "auto_confirmed" : score > E.MIN_MATCH ? "suggested" : "unmapped";
+    $("#np-route").innerHTML = `<span class="pill s-${st}">${st}</span> <span class="mono muted">score ${Math.max(score, 0).toFixed(3)}</span>`;
+  }
+  $("#np-in").addEventListener("input", playground);
+  $("#np-country").addEventListener("change", playground);
+  document.querySelectorAll(".preset").forEach(b => b.addEventListener("click", () => { $("#np-in").value = b.textContent; playground(); }));
+  playground();
+
+  /* Sample uploads. History columns are named so get_col() resolves them correctly (see README, known issues). */
+  function sampleFiles() {
+    return {
+      m: { name: "PVM_Mother_Registry.xlsx", rows: E.SAMPLE.mothers.map(m => ({ "Mother Code": m.code, "Description": m.desc, brand: m.brand, packType: m.packType, weight: m.weight })) },
+      h: { name: "Mapping_History_FY26.xlsx", rows: E.SAMPLE.history.map(h => ({ "Code": h.child_code, "Description": h.child_desc, "Mother Target": h.mother_code })) },
+      c: { name: "PnL_Extract_Oct26.csv", rows: E.SAMPLE.children.map(c => ({ "SKU Code": c.code, "Description": c.desc, "Market": c.country })) }
+    };
+  }
+  /* ---------------- App state (mirrors st.session_state) ---------------- */
+  const S = {
+    mothers: [], history: [], children: [], audit: [],
+    files: sampleFiles(),
+    view: "dashboard", wbFilter: "suggested", wbSearch: "", open: new Set(), unmappedSel: null, regDraft: null, steps: 0, ran: false
+  };
+  function log(action, detail, method, note = "") { S.audit.unshift({ at: now(), by: USER, action, detail, method, note }); }
+
+  /* get_col(): first column whose name contains a keyword, else the first column */
+  const getCol = (cols, kws) => cols.find(c => kws.some(k => c.toLowerCase().includes(k))) || cols[0];
+
+  function execute() {
+    const fm = S.files.m.rows, fh = S.files.h.rows, fc = S.files.c.rows;
+    const mc = Object.keys(fm[0] || {}), hc = Object.keys(fh[0] || {}), cc = Object.keys(fc[0] || {});
+    const mCode = getCol(mc, ["code", "id"]), mDesc = getCol(mc, ["desc", "name"]);
+    const hCC = getCol(hc, ["child", "code"]), hCD = getCol(hc, ["child", "desc"]), hMC = getCol(hc, ["mother", "target"]);
+    const cCode = getCol(cc, ["code", "id"]), cDesc = getCol(cc, ["desc", "name"]);
+    const cCountry = cc.find(c => ["country", "market"].some(k => c.toLowerCase().includes(k)));
+    const mothers = fm.map(r => ({ ...r, code: String(r[mCode]).trim(), desc: String(r[mDesc] ?? ""), id: String(r.id ?? r[mCode]).trim(), brand: r.brand ?? "Unknown", packType: r.packType ?? "", weight: r.weight ?? "" }))
+      .map(r => { const o = { id: r.id, code: r.code, desc: r.desc, brand: r.brand, packType: r.packType, weight: r.weight }; return o; });
+    const history = fh.map(r => ({ child_code: String(r[hCC]).trim(), child_desc: String(r[hCD] ?? ""), mother_code: String(r[hMC]).trim() }));
+    const children = fc.map(r => ({ code: String(r[cCode]).trim(), desc: String(r[cDesc] ?? ""), country: cCountry ? String(r[cCountry]) : "Unknown" }));
+    S.mothers = mothers; S.history = history;
+    S.children = E.runPipeline(mothers, history, children);
+    S.ran = true;
+    log("Batch ML Pipeline Executed", `Processed ${S.children.length} new records.`, "system");
+  }
+
+  // Seed: app initialised, then the sample pipeline run once so every view opens populated.
+  S.audit.push({ at: now(), by: "system", action: "Application initialized", detail: "Awaiting data import pipeline", method: "system", note: "" });
+  execute(); S.steps = 5;
+
+  /* ---------------- helpers ---------------- */
+  const mother = id => S.mothers.find(m => m.id === String(id));
+  const isConfirmed = c => c.status === "confirmed" || c.status === "auto_confirmed";
+  const pill = s => `<span class="pill s-${s}">${s}</span>`;
+  function table(rows, cols, opts = {}) {
+    if (!rows.length) return `<div class="empty">No rows.</div>`;
+    cols = cols || Object.keys(rows[0]);
+    return `<div class="tbl-wrap"><table><thead><tr>${opts.index ? "<th></th>" : ""}${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map((r, i) => `<tr>${opts.index ? `<td class="muted num">${i}</td>` : ""}${cols.map(c => `<td${opts.edit ? ` contenteditable="true" data-r="${i}" data-c="${esc(c)}"` : ""}${typeof r[c] === "number" ? ' class="num"' : ""}>${opts.fmt?.[c] ? opts.fmt[c](r[c], r) : esc(r[c])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+  const note = (html) => `<div class="note"><b>Behind this view</b><p>${html}</p></div>`;
+  let toastT;
+  function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+
+  /* ---------------- views ---------------- */
+  const TABS = {
+    dashboard: "📋 Dashboard Overview", ingestion: "📥 Data Ingestion Pipeline", workbench: "🔄 Mapping Workbench",
+    unmapped: "📋 Unmapped Queue", conflicts: "⚠️ Conflict Detection", registry: "🗄️ Master Registry", audit: "📜 Audit Ledger"
+  };
+
+  const V = {};
+  V.dashboard = () => {
+    const ch = S.children, n = s => ch.filter(c => c.status === s).length;
+    const conf = ch.filter(isConfirmed).length, sug = n("suggested"), un = n("unmapped");
+    const byMethod = {}; ch.forEach(c => { const k = c.method || "none"; byMethod[k] = (byMethod[k] || 0) + 1; });
+    const byCountry = {}; ch.forEach(c => { const o = byCountry[c.country] ||= { Country: c.country, Records: 0, Confirmed: 0, Suggested: 0, Unmapped: 0 }; o.Records++; if (isConfirmed(c)) o.Confirmed++; else if (c.status === "suggested") o.Suggested++; else o.Unmapped++; });
+    const pct = x => ch.length ? (x / ch.length * 100) : 0;
+    return `<h2>Mapping Overview</h2><p class="lede">Consolidated metrics of SKU mapping across operating regions.</p>
+      <div class="metrics">
+        <div class="metric"><h5>Total Unprocessed</h5><div class="n">${ch.length}</div></div>
+        <div class="metric"><h5 class="c-ok">Confirmed Links</h5><div class="n">${conf}</div></div>
+        <div class="metric"><h5 class="c-acc">Awaiting Review</h5><div class="n">${sug}</div></div>
+        <div class="metric"><h5 class="c-warn">Unmapped Flags</h5><div class="n">${un}</div></div>
+      </div>
+      ${ch.length ? `
+      <div class="panel"><h4>Status mix</h4>
+        <div class="bar" role="img" aria-label="${conf} confirmed, ${sug} suggested, ${un} unmapped"><i style="width:${pct(conf)}%;background:var(--ok)"></i><i style="width:${pct(sug)}%;background:var(--accent)"></i><i style="width:${pct(un)}%;background:var(--warn)"></i></div>
+        <div class="legend"><span style="--c:var(--ok)">Confirmed ${conf}</span><span style="--c:var(--accent)">Awaiting review ${sug}</span><span style="--c:var(--warn)">Unmapped ${un}</span></div>
+      </div>
+      <div class="grid2">
+        <div class="panel"><h4>By market</h4>${table(Object.values(byCountry))}</div>
+        <div class="panel"><h4>By match method</h4>${table(Object.entries(byMethod).map(([k, v]) => ({ Method: k, Records: v })))}</div>
+      </div>` : `<div class="alert info">No data loaded. Please proceed to the Data Ingestion Pipeline to upload your matrices.</div>`}
+      ${note("Four counters read straight from <code>st.session_state.children</code>. “Total Unprocessed” counts every child row from the latest run; confirmed combines <code>confirmed</code> and <code>auto_confirmed</code>. The market and method breakdowns are added in this mock-up for orientation.")}`;
+  };
+
+  V.ingestion = () => {
+    const f = S.files, all = f.m.rows.length && f.h.rows.length && f.c.rows.length;
+    const up = (k, step, title, hint) => `<div class="upload"><b>${step}. ${title}</b><span class="muted" style="font-size:13px">${hint}</span>
+      <div class="drop"><span class="fname">${f[k].rows.length ? `📄 ${esc(f[k].name)}` : "No file"}</span><span class="muted">${f[k].rows.length} rows · ${Object.keys(f[k].rows[0] || {}).length} columns</span>
+      <label for="up-${k}">Replace with your own CSV…</label><input id="up-${k}" type="file" accept=".csv" data-k="${k}"></div>
+      <details><summary class="muted" style="cursor:pointer;font-size:13px">Preview first rows</summary>${table(f[k].rows.slice(0, 4))}</details></div>`;
+    const stepNames = ["Read the three files", "Standardise column names (get_col)", "Build history dictionary", "Generate semantic embeddings", "Triage every child SKU into tiers"];
+    return `<h2>Data Ingestion Pipeline</h2><p class="lede">Upload your structural datasets. The system will process history auto-carries and run ML fuzzy embeddings on new SKUs.</p>
+      <div class="grid3">${up("m", 1, "Master Mother SKUs", "Target Canonical Registry")}${up("h", 2, "Historical Mappings", "Previous Child->Mother Links")}${up("c", 3, "New Unmapped SKUs", "Raw P&L Extraction")}</div>
+      <div class="row"><button class="btn primary" id="run" ${all ? "" : "disabled"}>🚀 Execute History-Aware ML Pipeline</button><button class="btn" id="reset">Restore sample files</button></div>
+      <div class="steps">${stepNames.map((s, i) => `<div class="${i < S.steps ? "done" : ""}">${s}</div>`).join("")}</div>
+      ${S.ran && S.steps >= 5 ? `<div class="alert ok">Pipeline Execution Complete! ${S.children.length} records processed. Navigate to Dashboard or Workbench to review.</div>` : ""}
+      ${note("The button appears only when all three uploads are present. Column names are found by keyword (“code”/“id”, “desc”/“name”, “child”, “mother”/“target”, “country”/“market”), mother columns are renamed to <code>code</code> and <code>desc</code>, and IDs are cast to strings so joins don't fail on numeric codes. Watch the history file: <code>get_col(['child','desc'])</code> takes the first column containing either word, so a history file with a “Child Code” column before its description uses the codes as descriptions. The sample names its columns Code / Description / Mother Target to avoid that. Running again replaces the current session's results.")}`;
+  };
+
+  V.workbench = () => {
+    let rows = S.children.map((c, i) => ({ c, i }));
+    if (S.wbFilter !== "all") rows = rows.filter(r => r.c.status === S.wbFilter);
+    const q = S.wbSearch.trim().toLowerCase();
+    if (q) rows = rows.filter(r => r.c.desc.toLowerCase().includes(q) || r.c.code.toLowerCase().includes(q));
+    const opts = ["suggested", "auto_confirmed", "confirmed", "unmapped", "all"];
+    return `<h2>Mapping Workbench Engine</h2><p class="lede">Verify the algorithmic suggestions against parsed metadata properties.</p>
+      <div class="filters">
+        <div><label class="nav-label" for="wb-f">Filter Current Queue State Matrix</label><select id="wb-f" class="field">${opts.map(o => `<option ${o === S.wbFilter ? "selected" : ""}>${o}</option>`).join("")}</select></div>
+        <div><label class="nav-label" for="wb-q">Search code indexes or keyword descriptions...</label><input id="wb-q" class="field" value="${esc(S.wbSearch)}" placeholder="e.g. mentos, VN-24"></div>
+      </div>
+      <div style="display:grid;gap:8px">${rows.length ? rows.map(({ c, i }) => {
+        const m = c.mother_id != null ? mother(c.mother_id) : null;
+        const color = c.confidence >= .85 ? "var(--ok)" : c.confidence > .45 ? "var(--accent)" : "var(--warn)";
+        return `<details class="exp" data-i="${i}" ${S.open.has(i) ? "open" : ""}><summary><span class="t">🌐 ${esc(c.country)} | Code ID: <span class="mono">${esc(c.code)}</span> — ${esc(c.desc)}</span>${pill(c.status)}</summary>
+          <div class="body"><div style="display:grid;gap:8px;align-content:start">
+            <b style="font-size:13px">Parsed Spec Values:</b><pre class="json">${esc(JSON.stringify(E.parseSpecs(c.desc), null, 2))}</pre>
+            ${m ? `<div class="alert info">🔒 <b>Assigned Parent Node:</b> ${esc(m.desc)} (<span class="mono">${esc(m.code)}</span>)</div>
+              <div class="conf"><span class="meter"><i style="width:${c.confidence * 100}%;background:${color}"></i></span>Assigned via: <span class="mono">${esc(c.method)}</span> | Confidence: ${(c.confidence * 100).toFixed(1)}%</div>`
+              : `<div class="alert warn">⚠️ Status: Unmapped</div>`}
+          </div><div style="display:grid;gap:8px;align-content:start">
+            <button class="btn sm" data-confirm="${i}" ${isConfirmed(c) || !m ? "disabled" : ""}>Confirm Current Assign</button>
+            <label class="nav-label" for="ov-${i}" style="margin-top:6px">Search Registry for Override:</label>
+            <input id="ov-${i}" class="field" data-ov="${i}" placeholder="Search Mothers...">
+            <div class="opts" id="ovr-${i}"></div>
+          </div></div></details>`;
+      }).join("") : `<div class="empty">No records in this state.</div>`}</div>
+      ${note("Each row is an <code>st.expander</code>. Specs come from <code>parse_specs()</code> on the raw description so a reviewer can check weight and pack size against the proposed mother. Try <span class='mono'>VN-30022</span> “Mentos fruity”: the history tier proposed Mint Roll at 46%; search “fruit” to relink it. Overrides are saved with method <code>manual_override</code>.")}`;
+  };
+
+  V.unmapped = () => {
+    const items = S.children.map((c, i) => ({ c, i })).filter(r => r.c.status === "unmapped");
+    if (!items.length) return `<h2>Unmapped Workspace Queue</h2><p class="lede">Items here yielded low operational correlation parameters and require validation.</p><div class="alert ok">Unmapped ledger tracking clear! Everything resolved. 🎉</div>${note("When a manual binding is saved the row becomes <code>confirmed</code> with method <code>manual</code>, and the rationale is written to both the record and the audit ledger.")}`;
+    if (S.unmappedSel == null || !items.some(r => r.i === S.unmappedSel)) S.unmappedSel = items[0].i;
+    const c = S.children[S.unmappedSel];
+    return `<h2>Unmapped Workspace Queue</h2><p class="lede">Items here yielded low operational correlation parameters and require validation.</p>
+      <div class="grid2" style="grid-template-columns:minmax(0,2fr) minmax(0,3fr)">
+        <div class="panel"><div class="nav-label">Select Child Record Targets</div><div class="queue">${items.map(({ c, i }) => `<label><input type="radio" name="uq" value="${i}" ${i === S.unmappedSel ? "checked" : ""}> <span>${esc(c.country)} | ${esc(c.desc)}</span></label>`).join("")}</div></div>
+        <div class="panel">
+          <div><div class="nav-label">Source SKU System Reference Code</div><div class="bigcode">${esc(c.code)}</div></div>
+          <div><label class="nav-label" for="um-desc">Original String Asset</label><textarea id="um-desc" class="field" rows="2" disabled>${esc(c.desc)}</textarea></div>
+          <div><label class="nav-label" for="um-m">Assign To Target Mother</label><select id="um-m" class="field">${S.mothers.map(m => `<option value="${esc(m.id)}">${esc(m.desc)} (${esc(m.code)})</option>`).join("")}</select></div>
+          <div><label class="nav-label" for="um-note">Enter Audit Trail Rationale Description (Required)</label><input id="um-note" class="field" placeholder="e.g. Tet display unit — map to Chupa Chups Mini Box per trade marketing"></div>
+          <div><button class="btn primary" id="um-go" disabled>Execute Binding Override Link</button></div>
+        </div>
+      </div>
+      ${note("The button stays disabled until a rationale is entered: every manual link is justified in the audit ledger. The two sample items are promotional bundles with no product words, so neither embedding tier scored above 0.45.")}`;
+  };
+
+  V.conflicts = () => {
+    const found = E.findConflicts(S.children);
+    return `<h2>Conflict Matrix Detector</h2><p class="lede">Identifies duplicate code registrations.</p>
+      ${!S.children.length ? `<div class="alert info">Awaiting data.</div>` : found.length ? `<div class="alert err">Alert: Multi-Mother Code Overlaps Found!</div>
+        ${table(found.map(f => ({ code: f.code, links: f.links, mothers: f.mothers.map(id => mother(id)?.desc || id).join("  ·  ") })))}
+        <div class="panel"><h4>Rows involved</h4>${table(S.children.filter(c => found.some(f => f.code === c.code)).map(c => ({ code: c.code, desc: c.desc, mother: mother(c.mother_id)?.code || "", status: c.status, method: c.method })))}</div>`
+        : `<div class="alert ok">Zero transactional duplicate blocks detected.</div>`}
+      <pre class="sql">SELECT code, count(distinct mother_id) as links
+FROM children
+WHERE mother_id IS NOT NULL AND mother_id != 'None'
+GROUP BY code HAVING links > 1</pre>
+      ${note("The children table is loaded into an in-memory SQLite database and this query runs on every visit. Here market Vietnam reused code <span class='mono'>VN-24015</span> for a lollipop pouch and a caramel promo pack, so one code points at two mothers. Relink one of them in the Workbench to clear the alert.")}`;
+  };
+
+  V.registry = () => {
+    if (!S.mothers.length) return `<h2>Master SKU Registry Matrix Index</h2><div class="alert info">Awaiting data.</div>`;
+    if (!S.regDraft) S.regDraft = S.mothers.map(m => ({ ...m }));
+    return `<h2>Master SKU Registry Matrix Index</h2><p class="lede">Click any cell to edit. Changes stay in the editor until committed.</p>
+      ${table(S.regDraft, ["id", "code", "desc", "brand", "packType", "weight"], { edit: true, index: true })}
+      <div class="row"><button class="btn sm" id="reg-add">+ Add row</button><button class="btn" id="reg-commit">Commit Master Catalog Adjustments</button></div>
+      ${note("<code>st.data_editor</code> with <code>num_rows=\"dynamic\"</code>. Edits update the in-session mother list that the Workbench and Unmapped Queue search; new mothers are not re-matched until the pipeline runs again.")}`;
+  };
+
+  V.audit = () => {
+    const confirmed = S.children.filter(c => isConfirmed(c) && mother(c.mother_id));
+    const exp = confirmed.map(c => { const m = mother(c.mother_id); return { country: c.country, code_child: c.code, desc_child: c.desc, status: c.status, confidence: c.confidence, method: c.method, note: c.note, code_canonical: m.code, desc_canonical: m.desc, brand: m.brand }; });
+    S._export = exp;
+    return `<h2>Audit Analytics Ledger</h2>
+      ${table(S.audit, ["at", "by", "action", "detail", "method", "note"])}
+      <div class="panel"><h4>Canonical mapping export · ${exp.length} confirmed links</h4>
+        ${table(exp.slice(0, 6), ["country", "code_child", "desc_child", "code_canonical", "desc_canonical", "method", "confidence"], { fmt: { confidence: v => (v * 100).toFixed(0) + "%" } })}
+        ${exp.length > 6 ? `<span class="muted" style="font-size:13px">+ ${exp.length - 6} more rows in the export</span>` : ""}
+        <div class="row"><button class="btn primary" id="exp-copy" ${exp.length ? "" : "disabled"}>Copy export as CSV</button><span class="muted" style="font-size:13px">The real app downloads <span class="mono">PVM_Canonical_Export.xlsx</span>, sheet <span class="mono">PVM_Canonical_Mappings</span>.</span></div>
+      </div>
+      ${note("Every pipeline run, manual binding, override and confirmation is logged with time, analyst and method. The export joins confirmed and auto-confirmed children to their mothers, with columns suffixed <code>_child</code> and <code>_canonical</code>.")}`;
+  };
+
+  /* ---------------- render + events ---------------- */
+  function renderNav() {
+    const counts = { workbench: S.children.filter(c => c.status === "suggested").length, unmapped: S.children.filter(c => c.status === "unmapped").length, conflicts: E.findConflicts(S.children).length };
+    $("#nav").innerHTML = Object.entries(TABS).map(([k, label]) => `<button type="button" data-v="${k}" aria-current="${k === S.view}"><span class="radio"></span>${label}${counts[k] ? `<span class="count">${counts[k]}</span>` : ""}</button>`).join("");
+  }
+  function render() { renderNav(); $("#view").innerHTML = V[S.view](); }
+  function go(v, scroll) { if (!TABS[v]) return; S.view = v; render(); if (scroll) $("#mockup").scrollIntoView({ behavior: "smooth", block: "start" }); }
+
+  $("#nav").addEventListener("click", e => { const b = e.target.closest("button[data-v]"); if (!b) return; if (location.hash !== "#" + b.dataset.v) history.replaceState(null, "", "#" + b.dataset.v); go(b.dataset.v); });
+
+  const view = $("#view");
+  view.addEventListener("toggle", e => { const d = e.target; if (d.matches?.("details.exp")) { const i = +d.dataset.i; d.open ? S.open.add(i) : S.open.delete(i); } }, true);
+
+  view.addEventListener("click", e => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.id === "run") {
+      S.steps = 0; S.ran = false; render();
+      const tick = () => { S.steps++; if (S.view === "ingestion") render(); if (S.steps < 5) setTimeout(tick, 380); else { execute(); S.open.clear(); S.regDraft = null; render(); toast("Generating semantic embeddings… done"); } };
+      setTimeout(tick, 300);
+    }
+    if (t.id === "reset") { S.files = sampleFiles(); render(); toast("Sample files restored"); }
+    if (t.dataset.confirm != null) { const c = S.children[+t.dataset.confirm]; c.status = "confirmed"; log("Suggestion Confirmed", `Confirmed ${c.code} → ${mother(c.mother_id)?.code}`, c.method); render(); toast(`${c.code} confirmed`); }
+    if (t.dataset.link != null) { const [i, mid] = t.dataset.link.split("|"); const c = S.children[+i]; c.mother_id = mid; c.status = "confirmed"; c.method = "manual_override"; c.confidence = 1; log("Manual Override", `Relinked ${c.code} → ${mother(mid)?.code}`, "manual_override"); render(); toast(`${c.code} linked to ${mother(mid)?.code}`); }
+    if (t.id === "um-go") { const i = S.unmappedSel, c = S.children[i], mid = $("#um-m").value, n = $("#um-note").value.trim(); if (!n) return;
+      Object.assign(c, { mother_id: mid, status: "confirmed", method: "manual", note: n, confidence: 1 }); log("Manual Binding", `Linked raw index code ${c.code}`, "manual", n); render(); toast(`${c.code} bound to ${mother(mid)?.code}`); }
+    if (t.id === "reg-add") { S.regDraft.push({ id: "", code: "", desc: "", brand: "", packType: "", weight: "" }); render(); }
+    if (t.id === "reg-commit") { S.mothers = S.regDraft.filter(r => String(r.code).trim()).map(r => ({ ...r, id: String(r.id || r.code).trim(), code: String(r.code).trim() })); S.regDraft = null; log("Registry Updated", `${S.mothers.length} mother SKUs committed`, "manual"); render(); toast("Records updated successfully."); }
+    if (t.id === "exp-copy") {
+      const rows = S._export, cols = Object.keys(rows[0]); const q = v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v ?? "");
+      const csv = [cols.join(","), ...rows.map(r => cols.map(c => q(r[c])).join(","))].join("\n");
+      navigator.clipboard?.writeText(csv).then(() => toast(`Copied ${rows.length} rows as CSV`), () => toast("Clipboard blocked here. Select the table to copy it.")) ?? toast("Clipboard unavailable");
+    }
+  });
+
+  view.addEventListener("input", e => {
+    const t = e.target;
+    if (t.id === "wb-q") { S.wbSearch = t.value; const pos = t.selectionStart; render(); const n = $("#wb-q"); n.focus(); n.setSelectionRange(pos, pos); }
+    if (t.dataset.ov != null) {
+      const i = +t.dataset.ov, q = t.value.trim().toLowerCase(), box = $("#ovr-" + i);
+      const hits = q ? S.mothers.filter(m => m.desc.toLowerCase().includes(q) || m.code.toLowerCase().includes(q)).slice(0, 3) : [];
+      box.innerHTML = hits.map(m => `<button class="btn sm" data-link="${i}|${esc(m.id)}">Link -> ${esc(m.desc)} (${esc(m.code)})</button>`).join("") || (q ? `<span class="muted" style="font-size:13px">No mothers match “${esc(q)}”.</span>` : "");
+    }
+    if (t.id === "um-note") $("#um-go").disabled = !t.value.trim();
+    if (t.matches("td[contenteditable]")) S.regDraft[+t.dataset.r][t.dataset.c] = t.textContent;
+  });
+
+  view.addEventListener("change", e => {
+    const t = e.target;
+    if (t.id === "wb-f") { S.wbFilter = t.value; render(); }
+    if (t.name === "uq") { S.unmappedSel = +t.value; render(); }
+    if (t.type === "file" && t.files[0]) {
+      const k = t.dataset.k, file = t.files[0], rd = new FileReader();
+      rd.onload = () => { const rows = parseCSV(String(rd.result)); if (!rows.length) { toast("That file has no data rows. Check it has a header row and at least one record."); return; } S.files[k] = { name: file.name, rows }; render(); toast(`${file.name}: ${rows.length} rows loaded`); };
+      rd.readAsText(file);
+    }
+  });
+
+  function parseCSV(text) {
+    const out = []; let row = [], cell = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true; else if (ch === ",") { row.push(cell); cell = ""; }
+      else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); out.push(row); row = []; cell = ""; }
+      else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); out.push(row); }
+    const rows = out.filter(r => r.some(c => c.trim()));
+    if (rows.length < 2) return [];
+    const head = rows[0].map(h => h.trim());
+    return rows.slice(1).map(r => Object.fromEntries(head.map((h, j) => [h, (r[j] ?? "").trim()])));
+  }
+
+  const fromHash = () => { const h = location.hash.slice(1); if (TABS[h]) go(h, true); };
+  window.addEventListener("hashchange", fromHash);
+  render();
+  if (TABS[location.hash.slice(1)]) fromHash();
+})();
+</script>
+</body>
+</html>
