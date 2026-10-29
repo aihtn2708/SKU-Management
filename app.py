@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer, util
 # ==========================================
 # 1. Page Configuration & Custom Styling
 # ==========================================
-st.set_page_config(page_title="Perfetti Van Melle | SKU Management System", layout="wide")
+st.set_page_config(page_title="SKU Management System", layout="wide")
 
 st.markdown("""
     <style>
@@ -19,7 +19,7 @@ st.markdown("""
         html, body, [class*="css"] { font-family: 'Nunito', sans-serif; }
         .stButton>button { border-radius: 20px; font-weight: 700; }
         .metric-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #E3E8F2; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        .pvm-header { color: #15247A; font-weight: 900; letter-spacing: -0.02em; }
+        .app-header { color: #15247A; font-weight: 900; letter-spacing: -0.02em; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -116,8 +116,8 @@ def log_event(action, detail, method, note=""):
 # ==========================================
 st.sidebar.markdown("""
     <div style='padding: 10px 0px;'>
-        <h2 style='color: #15247A; margin-bottom: 0px; font-weight:900;'>Perfetti Van Melle</h2>
-        <small style='color: #00AEEF; font-weight: 800; text-transform: uppercase;'>SKU Management System</small>
+        <h2 style='color: #15247A; margin-bottom: 0px; font-weight:900;'>SKU Management</h2>
+        <small style='color: #00AEEF; font-weight: 800; text-transform: uppercase;'>Mapping System</small>
     </div>
 """, unsafe_allow_html=True)
 
@@ -147,7 +147,7 @@ children_df = st.session_state.children
 # ==========================================
 
 if selected_tab == "dashboard":
-    st.markdown("<h1 class='pvm-header'>Mapping Overview</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='app-header'>Mapping Overview</h1>", unsafe_allow_html=True)
     st.markdown("Consolidated metrics of SKU mapping across operating regions.")
     
     m1, m2, m3, m4 = st.columns(4)
@@ -417,12 +417,12 @@ elif selected_tab == "audit":
         
         xl_io = io.BytesIO()
         with pd.ExcelWriter(xl_io, engine='openpyxl') as wr:
-            export_matrix.to_excel(wr, index=False, sheet_name='PVM_Canonical_Mappings')
+            export_matrix.to_excel(wr, index=False, sheet_name='Canonical_Mappings')
             
         st.download_button(
             label="Download Complete Canonical Mapping File (Excel)",
             data=xl_io.getvalue(),
-            file_name="PVM_Canonical_Export.xlsx",
+            file_name="Canonical_Export.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             type="primary"
         )
